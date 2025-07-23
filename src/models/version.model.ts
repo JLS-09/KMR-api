@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const VersionSchema = new mongoose.Schema({
   spec_version: { type: mongoose.Schema.Types.Mixed, required: true }, // Could be Number or String
   _id: { type: String, required: true, unique: true },
+  identifier: { type: String, required: true },
   download: {type: mongoose.Schema.Types.Mixed, required: true}, // String or [String]
   license: {type: mongoose.Schema.Types.Mixed, required: true}, // String or [String]
   version: { type: String, required: true },
@@ -35,4 +36,4 @@ const VersionSchema = new mongoose.Schema({
   provides: [String],
 });
 
-export const Version = mongoose.model("Mod", VersionSchema);
+export const Version = mongoose.model("Version", VersionSchema);
