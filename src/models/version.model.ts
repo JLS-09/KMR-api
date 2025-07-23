@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const VersionSchema = new mongoose.Schema({
   spec_version: { type: mongoose.Schema.Types.Mixed, required: true }, // Could be Number or String
-  identifier: { type: String, required: true, unique: true },
+  _id: { type: String, required: true, unique: true },
   download: {type: mongoose.Schema.Types.Mixed, required: true}, // String or [String]
   license: {type: mongoose.Schema.Types.Mixed, required: true}, // String or [String]
   version: { type: String, required: true },

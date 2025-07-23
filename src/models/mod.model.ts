@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const ModSchema = new mongoose.Schema({
-  identifier: { type: String, required: true, unique: true },
+  _id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   abstract: { type: String, required: true},
   author: { type: mongoose.Schema.Types.Mixed, required: true }, // String or [String]
