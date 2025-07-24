@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import scheduleGitActions from "./git/gitActions";
 import mongoose from "mongoose";
-import { routes } from "./routes/user.routes";
+import { routes } from "./routes/mod.routes";
 
 const dbUrl = process.env.DATABASE_URL;
 
@@ -13,7 +13,7 @@ const fastify = Fastify({
   },
 });
 
-fastify.register(routes, { prefix: '/api/users' })
+fastify.register(routes, { prefix: '/api/mods' })
 
 async function main() {
   await fastify.listen({

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdir, readdirSync, readFileSync, statSync } from "node:fs";
 import { simpleGit, SimpleGit, CleanOptions } from 'simple-git';
 import { scheduleJob } from "node-schedule";
 import { Mod } from "src/models/mod.model";
@@ -22,60 +22,64 @@ async function performGitActions() {
 }
 
 async function populateMods() {
-  readdirSync("./public/ckan-meta/").forEach(file => {
-    const stats = statSync(`./public/ckan-meta/${file}`);
-    if (!file.startsWith(".") && stats.isDirectory()) {
-      const versions: string[] = [];
-      readdirSync(`./public/ckan-meta/${file}`).forEach(version => versions.push(version))
+  const files: string[] = [];
+  readdirSync("./public/ckan-meta/").forEach(mod => files.push(mod));
+ 
+  for (const file of files) {
+    await insertModsAndVersions(file);
+  }
+}
 
-      const latestVersion = JSON.parse(readFileSync(`./public/ckan-meta/${file}/${versions[versions.length - 1]}`, { encoding: "utf8" }));
-      
-      upsertMod({ _id: file }, { $set: { 
-        name: latestVersion.name,
-        abstract: latestVersion.abstract,
-        author: latestVersion.author,
-        description: latestVersion.description,
-        release_status: latestVersion.release_status,
-        tags: latestVersion.tags,
-        resources: latestVersion.resources
-      }})
-        .then(console.log)
-        .catch(console.error);
-      
-      versions.forEach(version => {
-        const versionJson = JSON.parse(readFileSync(`./public/ckan-meta/${file}/${version}`, { encoding: "utf8" }));
-        upsertVersion({ _id: version.slice(0, version.lastIndexOf(".")) },  { $set: { 
-          spec_version: versionJson.spec_version,
-          identifier: versionJson.identifier,
-          download: versionJson.download,
-          license: versionJson.license,
-          version: versionJson.version,
-          install: versionJson.install,
-          comment: versionJson.comment,
-          ksp_version: versionJson.ksp_version,
-          ksp_version_min: versionJson.ksp_version_min,
-          ksp_version_max: versionJson.ksp_version_max,
-          ksp_version_strict: versionJson.ksp_version_strict,
-          localizations: versionJson.localizations,
-          download_size: versionJson.download_size,
-          download_hash: versionJson.download_hash,
-          download_content_type: versionJson.download_content_type,
-          install_size: versionJson.install_size,
-          release_date: versionJson.release_date,
-          depends: versionJson.depends,
-          recommends: versionJson.recommends,
-          suggests: versionJson.suggests,
-          supports: versionJson.supports,
-          conflicts: versionJson.conflicts,
-          replaced_by: versionJson.replaced_by,
-          kind: versionJson.kind,
-          provides: versionJson.provides,
-        }}).then(console.log).catch(console.error);
-
-      })
-      
-    }
-  })
+async function insertModsAndVersions(file: string) {
+  const stats = statSync(`./public/ckan-meta/${file}`);
+  if (!file.startsWith(".") && stats.isDirectory()) {
+    const versions: string[] = [];
+    readdirSync(`./public/ckan-meta/${file}`).forEach(version => versions.push(version));
+    const latestVersion = JSON.parse(readFileSync(`./public/ckan-meta/${file}/${versions[versions.length - 1]}`, { encoding: "utf8" }));
+    
+    await upsertMod({ _id: file }, { $set: { 
+      name: latestVersion.name,
+      abstract: latestVersion.abstract,
+      author: latestVersion.author,
+      description: latestVersion.description,
+      release_status: latestVersion.release_status,
+      tags: latestVersion.tags,
+      resources: latestVersion.resources
+    }})
+      .then(console.log)
+      .catch(console.error);
+    
+    for (const version of versions) {
+      const versionJson = JSON.parse(readFileSync(`./public/ckan-meta/${file}/${version}`, { encoding: "utf8" }));
+      await upsertVersion({ _id: version.slice(0, version.lastIndexOf(".")) },  { $set: { 
+        spec_version: versionJson.spec_version,
+        identifier: versionJson.identifier,
+        download: versionJson.download,
+        license: versionJson.license,
+        version: versionJson.version,
+        install: versionJson.install,
+        comment: versionJson.comment,
+        ksp_version: versionJson.ksp_version,
+        ksp_version_min: versionJson.ksp_version_min,
+        ksp_version_max: versionJson.ksp_version_max,
+        ksp_version_strict: versionJson.ksp_version_strict,
+        localizations: versionJson.localizations,
+        download_size: versionJson.download_size,
+        download_hash: versionJson.download_hash,
+        download_content_type: versionJson.download_content_type,
+        install_size: versionJson.install_size,
+        release_date: versionJson.release_date,
+        depends: versionJson.depends,
+        recommends: versionJson.recommends,
+        suggests: versionJson.suggests,
+        supports: versionJson.supports,
+        conflicts: versionJson.conflicts,
+        replaced_by: versionJson.replaced_by,
+        kind: versionJson.kind,
+        provides: versionJson.provides,
+      }}).then(console.log).catch(console.error);
+    }      
+  }
 }
 
 async function upsertMod(query: { _id: string }, update: { $set: object }) {
@@ -90,5 +94,5 @@ async function upsertVersion(query: { _id: string }, update: { $set: object }) {
 
 export default function scheduleGitActions() {
   performGitActions();
-  scheduleJob('*/30 * * * *', performGitActions);
+  // scheduleJob('*/30 * * * *', performGitActions);
 }
