@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
 const ModSchema = new mongoose.Schema({
-  _id: { type: String, required: true, unique: true },
+  _id: String,
   name: { type: String, required: true },
-  abstract: { type: String, required: true},
+  abstract: String,
   author: { type: mongoose.Schema.Types.Mixed, required: true }, // String or [String]
   description: String,
   release_status: { type: String, enum: ["stable", "testing", "development"], default: "stable" },

@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 const VersionSchema = new mongoose.Schema({
   spec_version: { type: mongoose.Schema.Types.Mixed, required: true }, // Could be Number or String
-  _id: { type: String, required: true, unique: true },
+  _id: String,
   identifier: { type: String, required: true },
-  download: {type: mongoose.Schema.Types.Mixed, required: true}, // String or [String]
+  download: mongoose.Schema.Types.Mixed, // String or [String]
   license: {type: mongoose.Schema.Types.Mixed, required: true}, // String or [String]
   version: { type: String, required: true },
   install: [mongoose.Schema.Types.Mixed],

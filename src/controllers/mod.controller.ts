@@ -13,8 +13,6 @@ export async function getAllMods(request: FastifyRequest, reply: FastifyReply) {
 
 export async function getModById(request: FastifyRequest, reply: FastifyReply) {
   try {
-    console.log(request.params);
-    
     const mod = await Mod.findById(request.params.id);
     reply.send(mod);
   } catch (error) {
