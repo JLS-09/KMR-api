@@ -18,17 +18,17 @@ const git: SimpleGit = simpleGit("./public/ckan-meta").clean(CleanOptions.FORCE)
 async function performGitActions() {
   try {
     if (!existsSync("./public/ckan-meta")) {
-      logger.info("Starting cloning...")
+      logger.info("Starting cloning...");
       await git.clone("https://github.com/KSP-CKAN/CKAN-meta.git", "./ckan-meta/");
       logger.info("Repository cloned successfully")
     } else {
-      logger.info("Starting pulling...")
+      logger.info("Starting pulling...");
       await git.pull("origin", "master", ['--no-rebase']);
-      logger.info("Pulling succesfull")
+      logger.info("Pulling succesfull");
     }
     populateMods();
   } catch (error) {
-    logger.error(`Error cloning repository: ${error.message}`)
+    logger.error(`Error cloning repository: ${error.message}`);
   }
 }
 
@@ -122,9 +122,9 @@ async function bulkSaveMods(mods: ModUpdate[]) {
     }));
   const result = await Mod.bulkWrite(operations);
   if (result.isOk()) {
-    logger.info("Done uploading mods!")
+    logger.info("Done uploading mods!");
   } else {
-    logger.error(`Error uploading mods`)
+    logger.error(`Error uploading mods`);
   }
   return result;
 }
@@ -166,9 +166,9 @@ async function bulkSaveVersions(versions: VersionUpdate[]) {
     }));
   const result = await Version.bulkWrite(operations);
   if (result.isOk()) {
-    logger.info("Done uploading versions!")
+    logger.info("Done uploading versions!");
   } else {
-    logger.error(`Error uploading versions`)
+    logger.error(`Error uploading versions`);
   }
   return result;
 }

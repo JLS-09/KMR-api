@@ -8,7 +8,7 @@ const logger = pino({
   transport: {
     target: 'pino-pretty'
   },
-})
+});
 
 const dbUrl = process.env.DATABASE_URL;
 
@@ -20,13 +20,13 @@ const fastify = Fastify({
   },
 });
 
-fastify.register(routes, { prefix: '/api/mods' })
+fastify.register(routes, { prefix: '/api/mods' });
 
 async function main() {
   await fastify.listen({
     port: 3000,
     host: "0.0.0.0"
-  })
+  });
 
   try {
     if (dbUrl){
@@ -35,9 +35,9 @@ async function main() {
     if (mongoose.connection.db) {
       await mongoose.connection.db.admin().command({ ping: 1 });
     }
-    logger.info("Pinged your deployment. You successfully connected to MongoDB!")
+    logger.info("Pinged your deployment. Successfully connected to MongoDB!");
   } catch(error) {
-    console.log(error);
+    logger.error(error);
   }
 
   scheduleGitActions();
@@ -45,10 +45,10 @@ async function main() {
 
 ["SIGINT", "SIGTERM"].forEach((signal) => {
   process.on(signal, async () => {
-    await fastify.close()
+    await fastify.close();
 
     process.exit(0);
-  })
-})
+  });
+});
 
 main();
