@@ -5,21 +5,30 @@ import { Mod } from "src/models/mod.model";
 import { Version } from "src/models/version.model";
 import { ModUpdate } from "src/types/mod";
 import { VersionUpdate } from "src/types/version";
+import pino from "pino";
 
-const git: SimpleGit = simpleGit("./public").clean(CleanOptions.FORCE);
+const logger = pino({
+  transport: {
+    target: 'pino-pretty'
+  },
+})
+
+const git: SimpleGit = simpleGit("./public/ckan-meta").clean(CleanOptions.FORCE);
 
 async function performGitActions() {
   try {
     if (!existsSync("./public/ckan-meta")) {
+      logger.info("Starting cloning...")
       await git.clone("https://github.com/KSP-CKAN/CKAN-meta.git", "./ckan-meta/");
-      console.log(`Repository cloned successfully`);
+      logger.info("Repository cloned successfully")
     } else {
-      await git.pull("origin", "master");
-      console.log(`Pulling succesfull`);
+      logger.info("Starting pulling...")
+      await git.pull("origin", "master", ['--no-rebase']);
+      logger.info("Pulling succesfull")
     }
     populateMods();
   } catch (error) {
-      console.error('Error cloning repository:', error.message);
+    logger.error(`Error cloning repository: ${error.message}`)
   }
 }
 
@@ -28,7 +37,7 @@ async function populateMods() {
   const mods = [];
   const versions = [];
   readdirSync("./public/ckan-meta/").forEach(mod => files.push(mod));
- 
+
   for (const file of files) {
     const stats = statSync(`./public/ckan-meta/${file}`);
     if (!file.startsWith(".") && stats.isDirectory()) {
@@ -88,12 +97,14 @@ async function populateMods() {
       }
     }
   }
+
   await bulkSaveMods(mods as ModUpdate[]).then(console.log).catch(console.error);
   await bulkSaveVersions(versions as VersionUpdate[]).then(console.log).catch(console.error);
   
 }
 
 async function bulkSaveMods(mods: ModUpdate[]) {
+  logger.info("Uploading mods...")
   const operations = mods.map(mod => ({
     updateOne: {
       filter: { _id: mod._id },
@@ -110,10 +121,16 @@ async function bulkSaveMods(mods: ModUpdate[]) {
       }
     }));
   const result = await Mod.bulkWrite(operations);
+  if (result.isOk()) {
+    logger.info("Done uploading mods!")
+  } else {
+    logger.error(`Error uploading mods`)
+  }
   return result;
 }
 
 async function bulkSaveVersions(versions: VersionUpdate[]) {
+  logger.info("Uploading versions...")
   const operations = versions.map(version => ({
     updateOne: {
       filter: { _id: version._id },
@@ -148,6 +165,11 @@ async function bulkSaveVersions(versions: VersionUpdate[]) {
       }
     }));
   const result = await Version.bulkWrite(operations);
+  if (result.isOk()) {
+    logger.info("Done uploading versions!")
+  } else {
+    logger.error(`Error uploading versions`)
+  }
   return result;
 }
 

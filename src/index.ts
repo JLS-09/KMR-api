@@ -2,6 +2,13 @@ import Fastify from "fastify";
 import scheduleGitActions from "./git/gitActions";
 import mongoose from "mongoose";
 import { routes } from "./routes/mod.routes";
+import pino from 'pino';
+
+const logger = pino({
+  transport: {
+    target: 'pino-pretty'
+  },
+})
 
 const dbUrl = process.env.DATABASE_URL;
 
@@ -28,7 +35,7 @@ async function main() {
     if (mongoose.connection.db) {
       await mongoose.connection.db.admin().command({ ping: 1 });
     }
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    logger.info("Pinged your deployment. You successfully connected to MongoDB!")
   } catch(error) {
     console.log(error);
   }
