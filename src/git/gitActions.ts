@@ -6,12 +6,12 @@ import { Version } from "src/models/version.model";
 import { ModUpdate } from "src/types/mod";
 import { VersionUpdate } from "src/types/version";
 
-const git: SimpleGit = simpleGit("./public/ckan-meta/").clean(CleanOptions.FORCE);
+const git: SimpleGit = simpleGit("./public").clean(CleanOptions.FORCE);
 
 async function performGitActions() {
   try {
     if (!existsSync("./public/ckan-meta")) {
-      await git.clone("https://github.com/KSP-CKAN/CKAN-meta.git", "./public/ckan-meta/");
+      await git.clone("https://github.com/KSP-CKAN/CKAN-meta.git", "./ckan-meta/");
       console.log(`Repository cloned successfully`);
     } else {
       await git.pull("origin", "master");
