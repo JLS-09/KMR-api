@@ -13,43 +13,77 @@ const logger = pino({
   },
 })
 
-const git: SimpleGit = simpleGit("./public/ckan-meta").clean(CleanOptions.FORCE);
+let git: SimpleGit = simpleGit("./public/").clean(CleanOptions.FORCE);
+
+let lastCommitHash: String | null = null;
 
 async function performGitActions() {
   try {
-    if (!existsSync("./public/ckan-meta")) {
-      logger.info("Starting cloning...");
-      await git.clone("https://github.com/KSP-CKAN/CKAN-meta.git", "./ckan-meta/");
-      logger.info("Repository cloned successfully")
+    if (!existsSync("./public/CKAN-meta")) {
+      logger.info("No repo detected, cloning...");
+      await git.clone("https://github.com/KSP-CKAN/CKAN-meta.git");
+      logger.info("Repo cloned successfully");
+      await populateMods();
     } else {
-      logger.info("Starting pulling...");
+      await checkForNewCommitsAndPull();
+    }
+  } catch (error) {
+    logger.error(`Error cloning CKAN-meta: ${error.message}`);
+  }
+}
+
+async function checkForNewCommitsAndPull() {
+  let log;
+  
+  try {
+    logger.info("Fetching repo");
+    log = await git.cwd({ path: "./public/CKAN-meta"}).fetch().log(['origin/master']);
+    logger.info("fetching succesfull")
+  } catch (error) {
+    logger.error(`Error fetching CKAN-meta: ${error.message}`);
+  }
+
+  if (!log || !log.latest) {
+    return;
+  }
+
+  const latestCommit = log.latest.hash;
+
+  logger.info("Comparing hasshes...");
+  if (lastCommitHash && lastCommitHash !== latestCommit) {
+    try {
+      logger.info("New commit detected, pulling...");
       await git.pull("origin", "master", ['--no-rebase']);
       logger.info("Pulling succesfull");
+      await populateMods();
+    } catch (error) {
+      logger.error(`Error pulling CKAN-meta: ${error.message}`);
     }
-    populateMods();
-  } catch (error) {
-    logger.error(`Error cloning repository: ${error.message}`);
+  } else {
+    logger.info("No new commit, waiting...");
   }
+
+  lastCommitHash = latestCommit;
 }
 
 async function populateMods() {
   const files: string[] = [];
   const mods = [];
   const versions = [];
-  readdirSync("./public/ckan-meta/").forEach(mod => files.push(mod));
+  readdirSync("./public/CKAN-meta/").forEach(mod => files.push(mod));
 
   for (const file of files) {
-    const stats = statSync(`./public/ckan-meta/${file}`);
+    const stats = statSync(`./public/CKAN-meta/${file}`);
     if (!file.startsWith(".") && stats.isDirectory()) {
       const versionIds: string[] = [];
-      readdirSync(`./public/ckan-meta/${file}`).forEach(version => {
+      readdirSync(`./public/CKAN-meta/${file}`).forEach(version => {
         if (version.endsWith(".ckan")) {
           versionIds.push(version);
         }
       });
       
       if (versionIds.length > 0) {
-        const latestVersion = JSON.parse(readFileSync(`./public/ckan-meta/${file}/${versionIds[versionIds.length - 1]}`, { encoding: "utf8" }));
+        const latestVersion = JSON.parse(readFileSync(`./public/CKAN-meta/${file}/${versionIds[versionIds.length - 1]}`, { encoding: "utf8" }));
         mods.push(new Mod({
           _id: latestVersion.identifier,
           name: latestVersion.name,
@@ -63,7 +97,7 @@ async function populateMods() {
       }
 
       for (const version of versionIds) {
-        const versionJson = JSON.parse(readFileSync(`./public/ckan-meta/${file}/${version}`, { encoding: "utf8" }));
+        const versionJson = JSON.parse(readFileSync(`./public/CKAN-meta/${file}/${version}`, { encoding: "utf8" }));
 
         versions.push(new Version({ 
           _id: version.slice(0, version.lastIndexOf(".")),
