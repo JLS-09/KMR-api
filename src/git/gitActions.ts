@@ -49,7 +49,7 @@ async function checkForNewCommitsAndPull() {
 
   const latestCommit = log.latest.hash;
 
-  logger.info("Comparing hasshes...");
+  logger.info("Comparing hashes...");
   if (lastCommitHash && lastCommitHash !== latestCommit) {
     try {
       logger.info("New commit detected, pulling...");
