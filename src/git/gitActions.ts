@@ -15,7 +15,7 @@ const logger = pino({
 
 let git: SimpleGit = simpleGit("./public/").clean(CleanOptions.FORCE);
 
-let lastCommitHash: String | null = null;
+let currentCommitHash: String | undefined;
 
 async function performGitActions() {
   try {
@@ -33,28 +33,39 @@ async function performGitActions() {
 }
 
 async function checkForNewCommitsAndPull() {
-  let log;
+  let newLog;
+
+  await git.cwd({ path: "./public/CKAN-meta"});
+
+  if (!currentCommitHash) {
+    logger.info("Current commit hash is empty, getting it...");
+    currentCommitHash = await git.revparse(['HEAD']);
+    logger.info("Saved current commit hash");
+  }
   
   try {
-    logger.info("Fetching repo");
-    log = await git.cwd({ path: "./public/CKAN-meta"}).fetch().log(['origin/master']);
-    logger.info("fetching succesfull")
+    logger.info("Looking for new commits, fetching repo...");
+    newLog = await git.fetch().log(['origin/master']);
+    logger.info("fetching succesfull");
   } catch (error) {
     logger.error(`Error fetching CKAN-meta: ${error.message}`);
   }
 
-  if (!log || !log.latest) {
+  if (!newLog || !newLog.latest || !currentCommitHash) {
+    logger.error("Something went wrong: newLog, newLog.latest or currentCommitHash is undefined");
     return;
   }
 
-  const latestCommit = log.latest.hash;
+  const newCommitHash = newLog.latest.hash;
 
   logger.info("Comparing hashes...");
-  if (lastCommitHash && lastCommitHash !== latestCommit) {
+  if (currentCommitHash && newCommitHash && currentCommitHash !== newCommitHash) {
     try {
       logger.info("New commit detected, pulling...");
       await git.pull("origin", "master", ['--no-rebase']);
       logger.info("Pulling succesfull");
+      currentCommitHash = newCommitHash;
+      logger.info("Saved new commit hash")
       await populateMods();
     } catch (error) {
       logger.error(`Error pulling CKAN-meta: ${error.message}`);
@@ -62,8 +73,6 @@ async function checkForNewCommitsAndPull() {
   } else {
     logger.info("No new commit, waiting...");
   }
-
-  lastCommitHash = latestCommit;
 }
 
 async function populateMods() {
@@ -71,7 +80,7 @@ async function populateMods() {
   const mods = [];
   const versions = [];
   readdirSync("./public/CKAN-meta/").forEach(mod => files.push(mod));
-
+  
   for (const file of files) {
     const stats = statSync(`./public/CKAN-meta/${file}`);
     if (!file.startsWith(".") && stats.isDirectory()) {
@@ -82,6 +91,7 @@ async function populateMods() {
         }
       });
       
+      logger.info("Formatting mods in correct format...");
       if (versionIds.length > 0) {
         const latestVersion = JSON.parse(readFileSync(`./public/CKAN-meta/${file}/${versionIds[versionIds.length - 1]}`, { encoding: "utf8" }));
         mods.push(new Mod({
@@ -96,6 +106,7 @@ async function populateMods() {
         }))      
       }
 
+      logger.info("Formatting versions in correct format...");
       for (const version of versionIds) {
         const versionJson = JSON.parse(readFileSync(`./public/CKAN-meta/${file}/${version}`, { encoding: "utf8" }));
 
