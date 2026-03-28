@@ -81,6 +81,7 @@ async function populateMods() {
   const versions = [];
   readdirSync("./public/CKAN-meta/").forEach(mod => files.push(mod));
   
+  logger.info("Formatting mods and versions in correct format...");
   for (const file of files) {
     const stats = statSync(`./public/CKAN-meta/${file}`);
     if (!file.startsWith(".") && stats.isDirectory()) {
@@ -91,7 +92,6 @@ async function populateMods() {
         }
       });
       
-      logger.info("Formatting mods in correct format...");
       if (versionIds.length > 0) {
         const latestVersion = JSON.parse(readFileSync(`./public/CKAN-meta/${file}/${versionIds[versionIds.length - 1]}`, { encoding: "utf8" }));
         mods.push(new Mod({
@@ -106,7 +106,6 @@ async function populateMods() {
         }))      
       }
 
-      logger.info("Formatting versions in correct format...");
       for (const version of versionIds) {
         const versionJson = JSON.parse(readFileSync(`./public/CKAN-meta/${file}/${version}`, { encoding: "utf8" }));
 
@@ -142,6 +141,7 @@ async function populateMods() {
       }
     }
   }
+  logger.info("Correctly formatted mods and versions!")
 
   await bulkSaveMods(mods as ModUpdate[]).then(console.log).catch(console.error);
   await bulkSaveVersions(versions as VersionUpdate[]).then(console.log).catch(console.error);
