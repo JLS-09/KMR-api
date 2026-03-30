@@ -1,5 +1,4 @@
 import Fastify from "fastify";
-import scheduleGitActions from "./git/gitActions";
 import mongoose from "mongoose";
 import { routes } from "./routes/mod.routes";
 import pino from 'pino';
@@ -39,8 +38,6 @@ async function main() {
   } catch(error) {
     logger.error(error);
   }
-
-  scheduleGitActions();
 }
 
 ["SIGINT", "SIGTERM"].forEach((signal) => {
