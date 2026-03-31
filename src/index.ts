@@ -19,7 +19,7 @@ const fastify = Fastify({
   },
 });
 
-fastify.register(routes, { prefix: '/api/mods' });
+fastify.register(routes, { prefix: '/api' });
 
 async function main() {
   await fastify.listen({
