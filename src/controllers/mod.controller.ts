@@ -73,6 +73,33 @@ export async function getAllMods(request: FastifyRequest<{ Querystring: CursorQu
   }
 }
 
+export async function getAllModsWithVersions(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const mods = await Mod.find().exec();
+    const modIds = mods.map(m => m._id);
+
+    const allVersions = await Version.find({ identifier: { $in: modIds } })
+      .sort({ release_date: -1 })
+      .exec();
+
+    const versionsByMod = new Map<string, any[]>();
+    for (const version of allVersions) {
+      const existing = versionsByMod.get(version.identifier) ?? [];
+      existing.push(version.toObject());
+      versionsByMod.set(version.identifier, existing);
+    }
+
+    const data = mods.map(m => ({
+      ...m.toObject(),
+      versions: versionsByMod.get(m._id as string) ?? [],
+    }));
+
+    reply.send(data);
+  } catch (error) {
+    reply.status(500).send(error);
+  }
+}
+
 export async function getModById(request: FastifyRequest, reply: FastifyReply) {
   try {
     const params: any = request.params;
