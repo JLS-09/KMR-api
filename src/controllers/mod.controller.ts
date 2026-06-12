@@ -9,6 +9,8 @@ interface CursorQuery {
   author_filter?: string;
 }
 
+let cache: { mods: any[]; timestamp: number } | null = null;
+
 export async function getAllMods(request: FastifyRequest<{ Querystring: CursorQuery }>, reply: FastifyReply) {
   try {
     const { page_size, cursor, mod_filter, author_filter } = request.query;
@@ -75,33 +77,33 @@ export async function getAllMods(request: FastifyRequest<{ Querystring: CursorQu
 
 export async function getAllModsWithVersions(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const total = await Mod.countDocuments();
     reply.raw.setHeader('Content-Type', 'application/x-ndjson');
-    reply.raw.setHeader('X-Total-Count', total.toString());
-    const BATCH_SIZE = 100;
-    const cursor = Mod.find().cursor();
-    let batch: any[] = [];
-    let writePromise: Promise<void> = Promise.resolve();
-    const flush = async (docs: any[]) => {
-      await Mod.populate(docs, 'versions');
-      for (const m of docs) {
-        reply.raw.write(JSON.stringify(m.toObject()) + '\n');
+
+    if (cache) {
+      reply.raw.setHeader('X-Total-Count', cache.mods.length.toString());
+      reply.raw.flushHeaders();
+
+      for (const mod of cache.mods) {
+        const ok = reply.raw.write(JSON.stringify(mod) + '\n');
+        if (!ok) await new Promise(res => reply.raw.once('drain', res));
       }
-    };
-    for await (const mod of cursor) {
-      batch.push(mod);
-      if (batch.length >= BATCH_SIZE) {
-        const toFlush = batch;
-        batch = [];
-        await writePromise;
-        writePromise = flush(toFlush);
+    } else {
+      const total = await Mod.collection.countDocuments();
+      reply.raw.setHeader('X-Total-Count', total.toString());
+      reply.raw.flushHeaders();
+
+      const mods: any[] = [];
+      const cursor = Mod.collection.find({});
+
+      for await (const mod of cursor) {
+        mods.push(mod);
+        const ok = reply.raw.write(JSON.stringify(mod) + '\n');
+        if (!ok) await new Promise(res => reply.raw.once('drain', res));
       }
+
+      cache = { mods, timestamp: Date.now() };
     }
-    if (batch.length > 0) {
-      await writePromise;
-      await flush(batch);
-    }
-    await writePromise;
+
     reply.raw.end();
   } catch (error) {
     reply.raw.writeHead(500);
