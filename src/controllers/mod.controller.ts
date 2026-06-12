@@ -75,28 +75,37 @@ export async function getAllMods(request: FastifyRequest<{ Querystring: CursorQu
 
 export async function getAllModsWithVersions(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const mods = await Mod.find().exec();
-    const modIds = mods.map(m => m._id);
-
-    const allVersions = await Version.find({ identifier: { $in: modIds } })
-      .sort({ release_date: -1 })
-      .exec();
-
-    const versionsByMod = new Map<string, any[]>();
-    for (const version of allVersions) {
-      const existing = versionsByMod.get(version.identifier) ?? [];
-      existing.push(version.toObject());
-      versionsByMod.set(version.identifier, existing);
+    const total = await Mod.countDocuments();
+    reply.raw.setHeader('Content-Type', 'application/x-ndjson');
+    reply.raw.setHeader('X-Total-Count', total.toString());
+    const BATCH_SIZE = 100;
+    const cursor = Mod.find().cursor();
+    let batch: any[] = [];
+    let writePromise: Promise<void> = Promise.resolve();
+    const flush = async (docs: any[]) => {
+      await Mod.populate(docs, 'versions');
+      for (const m of docs) {
+        reply.raw.write(JSON.stringify(m.toObject()) + '\n');
+      }
+    };
+    for await (const mod of cursor) {
+      batch.push(mod);
+      if (batch.length >= BATCH_SIZE) {
+        const toFlush = batch;
+        batch = [];
+        await writePromise;
+        writePromise = flush(toFlush);
+      }
     }
-
-    const data = mods.map(m => ({
-      ...m.toObject(),
-      versions: versionsByMod.get(m._id as string) ?? [],
-    }));
-
-    reply.send(data);
+    if (batch.length > 0) {
+      await writePromise;
+      await flush(batch);
+    }
+    await writePromise;
+    reply.raw.end();
   } catch (error) {
-    reply.status(500).send(error);
+    reply.raw.writeHead(500);
+    reply.raw.end(JSON.stringify({ error: (error as Error).message }));
   }
 }
 
