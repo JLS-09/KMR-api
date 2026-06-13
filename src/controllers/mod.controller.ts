@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { Mod } from "src/models/mod.model";
 import { Version } from "src/models/version.model";
@@ -9,7 +10,11 @@ interface CursorQuery {
   author_filter?: string;
 }
 
-let cache: { mods: any[]; timestamp: number } | null = null;
+let cache: { mods: any[]; timestamp: number; commitHash: string } | null = null;
+
+export function invalidateModCache() {
+  cache = null;
+}
 
 export async function getAllMods(request: FastifyRequest<{ Querystring: CursorQuery }>, reply: FastifyReply) {
   try {
@@ -79,7 +84,10 @@ export async function getAllModsWithVersions(request: FastifyRequest, reply: Fas
   try {
     reply.raw.setHeader('Content-Type', 'application/x-ndjson');
 
-    if (cache) {
+    const out = execSync("git ls-remote https://github.com/KSP-CKAN/CKAN-meta.git HEAD").toString();
+    const latestCommitHash = out.split("\t")[0];
+
+    if (cache && cache.commitHash === latestCommitHash) {
       reply.raw.setHeader('X-Total-Count', cache.mods.length.toString());
       reply.raw.flushHeaders();
 
@@ -101,7 +109,7 @@ export async function getAllModsWithVersions(request: FastifyRequest, reply: Fas
         if (!ok) await new Promise(res => reply.raw.once('drain', res));
       }
 
-      cache = { mods, timestamp: Date.now() };
+      cache = { mods, timestamp: Date.now(), commitHash: latestCommitHash };
     }
 
     reply.raw.end();
